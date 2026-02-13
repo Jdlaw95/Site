@@ -1,99 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Be My Valentine ❤️</title>
-
-<style>
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(to bottom, #ff758c, #ff7eb3);
-    overflow: hidden;
-    text-align: center;
-}
-
-.top {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.top img {
-    max-width: 80%;
-    max-height: 70%;
-    border-radius: 20px;
-    transition: 0.5s ease;
-}
-
-h1 {
-    color: white;
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-}
-
-.bottom {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 40px;
-}
-
-button {
-    padding: 20px 40px;
-    font-size: 1.5rem;
-    border: none;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: 0.3s ease;
-}
-
-#yesBtn {
-    background-color: #ff2e63;
-    color: white;
-}
-
-#noBtn {
-    background-color: #333;
-    color: white;
-}
-
-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-}
-</style>
-</head>
-
-<body>
-
-<div class="top">
-    <h1>Will You Be My Valentine? 💖</h1>
-    <img id="mainImage" src="Cute1.jpg" alt="Cute">
-</div>
-
-<div class="bottom">
-    <button id="yesBtn">YES ❤️</button>
-    <button id="noBtn">NO 😢</button>
-</div>
-
-<canvas id="fireworks"></canvas>
-
 <script>
 let noClickCount = 0;
 const noBtn = document.getElementById("noBtn");
 const yesBtn = document.getElementById("yesBtn");
 const mainImage = document.getElementById("mainImage");
+const topSection = document.querySelector(".top");
+const bottomSection = document.querySelector(".bottom");
 
 noBtn.addEventListener("click", function() {
     noClickCount++;
@@ -110,11 +21,47 @@ noBtn.addEventListener("click", function() {
 });
 
 yesBtn.addEventListener("click", function() {
-    mainImage.src = "Yes.png";
-    noBtn.style.display = "none";
-    yesBtn.style.display = "none";
+
+    // Hide buttons
+    bottomSection.style.display = "none";
+
+    // Change image (MAKE SURE filename matches exactly)
+    mainImage.src = "Yes.PNG";
+
+    // Add animated text
+    const message = document.createElement("h1");
+    message.innerText = "I had a feeling you were going to say YES 😏❤️";
+    message.style.color = "white";
+    message.style.marginTop = "20px";
+    message.style.animation = "popIn 1s ease forwards";
+    message.style.opacity = "0";
+    topSection.appendChild(message);
+
+    // Add animation style dynamically
+    const style = document.createElement("style");
+    style.innerHTML = `
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        #mainImage {
+            animation: bounce 1s infinite alternate;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-15px); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    setTimeout(() => {
+        message.style.opacity = "1";
+    }, 100);
+
     startFireworks();
 });
+
 
 const canvas = document.getElementById("fireworks");
 const ctx = canvas.getContext("2d");
@@ -165,6 +112,3 @@ function animate() {
     });
 }
 </script>
-
-</body>
-</html>
