@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Be My Valentine ❤️</title>
 
 <style>
-body {
+  body {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
@@ -16,101 +16,239 @@ body {
     background: linear-gradient(to bottom, #ff758c, #ff7eb3);
     overflow: hidden;
     text-align: center;
-}
+  }
 
-.top {
+  .top {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-}
+    position: relative;
+    z-index: 2; /* above fireworks */
+  }
 
-.top img {
+  .top img {
     max-width: 80%;
     max-height: 70%;
     border-radius: 20px;
     transition: 0.5s ease;
-}
+  }
 
-h1 {
+  h1 {
     color: white;
     font-size: 2.2rem;
     margin-bottom: 20px;
-}
+  }
 
-.bottom {
+  .bottom {
     flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 40px;
-}
+    position: relative;
+    z-index: 2; /* above fireworks */
+  }
 
-button {
+  button {
     padding: 20px 40px;
     font-size: 1.5rem;
     border: none;
     border-radius: 50px;
     cursor: pointer;
     transition: 0.3s ease;
-}
+    touch-action: manipulation;
+  }
 
-#yesBtn {
+  #yesBtn {
     background-color: #ff2e63;
     color: white;
-}
+  }
 
-#noBtn {
+  /* NO button becomes movable */
+  #noBtn {
     background-color: #333;
     color: white;
-}
+    position: fixed; /* move anywhere on screen */
+    left: 50%;
+    top: 75%;
+    transform: translate(-50%, -50%);
+    z-index: 3; /* still above content, but content is already above fireworks */
+  }
 
-canvas {
+  canvas {
     position: fixed;
     top: 0;
     left: 0;
     pointer-events: none;
-}
+
+    /* Put fireworks BEHIND everything */
+    z-index: 1;
+
+    /* Start hidden; fade in/out */
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
 </style>
 </head>
 
 <body>
 
-<div class="top">
+  <div class="top">
     <h1>Will You Be My Valentine? 💖</h1>
-    <img id="mainImage" src="Cute1.jpg" alt="Cute">
-</div>
+    <img id="mainImage" src="Cute1.jpg" alt="Cute" />
+  </div>
 
-<div class="bottom">
+  <div class="bottom">
     <button id="yesBtn">YES ❤️</button>
     <button id="noBtn">NO 😢</button>
-</div>
+  </div>
 
-<canvas id="fireworks"></canvas>
+  <canvas id="fireworks"></canvas>
 
 <script>
-let noClickCount = 0;
-const noBtn = document.getElementById("noBtn");
-const yesBtn = document.getElementById("yesBtn");
-const mainImage = document.getElementById("mainImage");
-const topSection = document.querySelector(".top");
-const bottomSection = document.querySelector(".bottom");
+  let noClickCount = 0;
+  const noBtn = document.getElementById("noBtn");
+  const yesBtn = document.getElementById("yesBtn");
+  const mainImage = document.getElementById("mainImage");
+  const topSection = document.querySelector(".top");
+  const bottomSection = document.querySelector(".bottom");
 
-noBtn.addEventListener("click", function() {
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  // Moves NO button to a random spot on the lower half of the screen
+  function moveNoButtonRandomlyInLowerHalf() {
+    const rect = noBtn.getBoundingClientRect();
+    const btnW = rect.width || 120;
+    const btnH = rect.height || 60;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const padding = 12;
+
+    const minX = padding;
+    const maxX = vw - btnW - padding;
+
+    const lowerHalfTop = vh * 0.55; // slightly below mid-screen
+    const minY = lowerHalfTop;
+    const maxY = vh - btnH - padding;
+
+    const x = Math.random() * (maxX - minX) + minX;
+    const y = Math.random() * (maxY - minY) + minY;
+
+    noBtn.style.left = `${clamp(x, minX, maxX)}px`;
+    noBtn.style.top  = `${clamp(y, minY, maxY)}px`;
+
+    // keep shrinking scale applied without translate centering
+    const shrink = Math.max(0.2, 1 - (noClickCount * 0.2));
+    noBtn.style.transform = `scale(${shrink})`;
+  }
+
+  noBtn.addEventListener("click", function() {
     noClickCount++;
-    let shrink = 1 - (noClickCount * 0.2);
-    let grow = 1 + (noClickCount * 0.3);
 
-    noBtn.style.transform = "scale(" + shrink + ")";
+    const grow = 1 + (noClickCount * 0.3);
     yesBtn.style.transform = "scale(" + grow + ")";
 
-    if (noClickCount >= 4) {
-        noBtn.style.display = "none";
-    }
-});
+    // shrink + move
+    moveNoButtonRandomlyInLowerHalf();
 
-yesBtn.addEventListener("click", function() {
+    if (noClickCount >= 4) {
+      noBtn.style.display = "none";
+    }
+  });
+
+  // --- Fireworks ---
+  const canvas = document.getElementById("fireworks");
+  const ctx = canvas.getContext("2d");
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+
+  let particles = [];
+  let fireworksIntervalId = null;
+  let animating = false;
+
+  function createFirework(x, y) {
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x,
+        y,
+        radius: 2,
+        color: "hsl(" + Math.random() * 360 + ", 100%, 60%)",
+        speedX: (Math.random() - 0.5) * 8,
+        speedY: (Math.random() - 0.5) * 8,
+        life: 100
+      });
+    }
+  }
+
+  function startFireworks(durationMs = 3500) {
+    // show canvas but keep it behind content
+    canvas.style.opacity = "1";
+
+    // spawn fireworks
+    fireworksIntervalId = setInterval(function() {
+      createFirework(Math.random() * canvas.width, Math.random() * canvas.height / 2);
+    }, 450);
+
+    // stop spawning after duration, then fade out
+    setTimeout(() => {
+      clearInterval(fireworksIntervalId);
+      fireworksIntervalId = null;
+
+      // let remaining particles finish, then fade canvas away
+      setTimeout(() => {
+        canvas.style.opacity = "0";
+      }, 800);
+    }, durationMs);
+
+    animate();
+  }
+
+  function animate() {
+    if (animating) return;
+    animating = true;
+
+    function loop() {
+      // clear without dark overlay so image stays visible
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // draw particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        p.life--;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      // keep animating while there are particles or still spawning
+      if (particles.length > 0 || fireworksIntervalId) {
+        requestAnimationFrame(loop);
+      } else {
+        animating = false;
+      }
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  yesBtn.addEventListener("click", function() {
     bottomSection.style.display = "none";
     mainImage.src = "Yes.PNG";
 
@@ -123,72 +261,28 @@ yesBtn.addEventListener("click", function() {
 
     const style = document.createElement("style");
     style.innerHTML = `
-        @keyframes popIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            70% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
-        }
-        #mainImage {
-            animation: bounce 1s infinite alternate;
-        }
-        @keyframes bounce {
-            from { transform: translateY(0px); }
-            to { transform: translateY(-15px); }
-        }
+      @keyframes popIn {
+        0% { transform: scale(0.5); opacity: 0; }
+        70% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); }
+      }
+      #mainImage {
+        animation: bounce 1s infinite alternate;
+      }
+      @keyframes bounce {
+        from { transform: translateY(0px); }
+        to { transform: translateY(-15px); }
+      }
     `;
     document.head.appendChild(style);
 
-    startFireworks();
-});
+    startFireworks(3500);
+  });
 
-const canvas = document.getElementById("fireworks");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let particles = [];
-
-function createFirework(x, y) {
-    for (let i = 0; i < 50; i++) {
-        particles.push({
-            x: x,
-            y: y,
-            radius: 2,
-            color: "hsl(" + Math.random()*360 + ", 100%, 60%)",
-            speedX: (Math.random() - 0.5) * 8,
-            speedY: (Math.random() - 0.5) * 8,
-            life: 100
-        });
-    }
-}
-
-function startFireworks() {
-    setInterval(function() {
-        createFirework(Math.random() * canvas.width, Math.random() * canvas.height/2);
-    }, 500);
-    animate();
-}
-
-function animate() {
-    requestAnimationFrame(animate);
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    particles.forEach(function(p, index) {
-        p.x += p.speedX;
-        p.y += p.speedY;
-        p.life--;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-
-        if (p.life <= 0) {
-            particles.splice(index, 1);
-        }
-    });
-}
+  // Place NO button nicely on load
+  window.addEventListener("load", () => {
+    moveNoButtonRandomlyInLowerHalf();
+  });
 </script>
 
 </body>
